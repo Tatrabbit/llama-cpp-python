@@ -210,7 +210,7 @@ class Llama:
         n_ctx: int = 512,
         n_parts: int = -1,
         n_gpu_layers: int = 0,
-        seed: int = 1337,
+        seed: int = -1,
         f16_kv: bool = True,
         logits_all: bool = False,
         vocab_only: bool = False,
@@ -1340,6 +1340,7 @@ class Llama:
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
+        seed: Optional[int] = None,
     ) -> Union[Completion, Iterator[CompletionChunk]]:
         """Generate text from a prompt.
 
@@ -1363,6 +1364,9 @@ class Llama:
         Returns:
             Response object containing the generated text.
         """
+        if seed != None:
+            self._set_seed(seed)
+
         completion_or_chunks = self._create_completion(
             prompt=prompt,
             suffix=suffix,
@@ -1415,6 +1419,7 @@ class Llama:
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
+        seed: Optional[int] = None,
     ) -> Union[Completion, Iterator[CompletionChunk]]:
         """Generate text from a prompt.
 
@@ -1430,6 +1435,7 @@ class Llama:
             repeat_penalty: The penalty to apply to repeated tokens.
             top_k: The top-k value to use for sampling.
             stream: Whether to stream the results.
+            seed: If specified, use deterministic generation.
 
         Raises:
             ValueError: If the requested tokens exceed the context window.
@@ -1460,6 +1466,7 @@ class Llama:
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
             grammar=grammar,
+            seed=seed,
         )
 
     def _convert_text_completion_to_chat(
@@ -1645,6 +1652,11 @@ class Llama:
             mul_mat_q=state["mul_mat_q"],
             verbose=state["verbose"],
         )
+
+    def _set_seed(self, seed:int):
+        self.params.seed = seed
+        llama_cpp.llama_set_rng_seed(self.ctx, seed)
+        self.reset()
 
     def save_state(self) -> LlamaState:
         assert self.ctx is not None

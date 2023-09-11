@@ -525,6 +525,10 @@ class CreateCompletionRequest(BaseModel):
     top_k: int = top_k_field
     repeat_penalty: float = repeat_penalty_field
     logit_bias_type: Optional[Literal["input_ids", "tokens"]] = Field(None)
+    seed: Optional[int] = Field(
+        default=None,
+        description="If specified, return a deterministic result.",
+    )
 
     model_config = {
         "json_schema_extra": {
