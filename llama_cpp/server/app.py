@@ -513,6 +513,10 @@ class CreateCompletionRequest(BaseModel):
     presence_penalty: Optional[float] = presence_penalty_field
     frequency_penalty: Optional[float] = frequency_penalty_field
     logit_bias: Optional[Dict[str, float]] = Field(None)
+    logit_bias_once: Optional[bool] = Field(
+        default=False,
+        description="If true, the bias will no longer be applied once any has been generated."
+    )
     logprobs: Optional[int] = Field(None)
 
     # ignored or currently unsupported
@@ -545,6 +549,7 @@ class CreateCompletionRequest(BaseModel):
 def make_logit_bias_processor(
     llama: llama_cpp.Llama,
     logit_bias: Dict[str, float],
+    logit_bias_once: Optional[bool],
     logit_bias_type: Optional[Literal["input_ids", "tokens"]],
 ):
     if logit_bias_type is None:
@@ -566,6 +571,11 @@ def make_logit_bias_processor(
         input_ids: List[int],
         scores: List[float],
     ) -> List[float]:
+        if logit_bias_once:
+            for logit in to_bias.keys():
+                if logit in input_ids:
+                    return scores
+
         new_scores = [None] * len(scores)
         for input_id, score in enumerate(scores):
             new_scores[input_id] = score + to_bias.get(input_id, 0.0)
@@ -593,13 +603,14 @@ async def create_completion(
         "best_of",
         "logit_bias",
         "logit_bias_type",
+        "logit_bias_once",
         "user",
     }
     kwargs = body.model_dump(exclude=exclude)
 
     if body.logit_bias is not None:
         kwargs['logits_processor'] = llama_cpp.LogitsProcessorList([
-            make_logit_bias_processor(llama, body.logit_bias, body.logit_bias_type),
+            make_logit_bias_processor(llama, body.logit_bias, body.logit_bias_once, body.logit_bias_type),
         ])
 
     iterator_or_completion: Union[llama_cpp.Completion, Iterator[
