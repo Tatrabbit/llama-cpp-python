@@ -174,3 +174,9 @@ cython_debug/
 
 # downloaded model .bin files
 docker/open_llama/*.bin
+
+# OS stuff
+.DS_Store
+
+# Temp files
+*~
